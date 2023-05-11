@@ -53,6 +53,10 @@ module.exports = {
   networks: {
     localhost: {
       url: "http://127.0.0.1:8545",
+      mining: {
+        auto: true,
+        interval: 5,
+      },
       // notice no mnemonic here? it will just use account 0 of the hardhat node to deploy
       // (you can put in a mnemonic here to set the deployer locally)
     },
@@ -251,6 +255,15 @@ module.exports = {
           },
         },
       },
+      {
+        version: "0.7.5",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
     ],
   },
   ovm: {
@@ -259,6 +272,15 @@ module.exports = {
   namedAccounts: {
     deployer: {
       default: 0, // here this will by default take the first account as deployer
+    },
+    contractOwner: {
+      default: 1,
+    },
+    admin: {
+      default: 2,
+    },
+    issuer: {
+      default: 3,
     },
   },
   etherscan: {

@@ -1,13 +1,24 @@
 import WalletConnectProvider from "@walletconnect/web3-provider";
 //import Torus from "@toruslabs/torus-embed"
 import WalletLink from "walletlink";
-import { Alert, Button, Col, Menu, Row, List } from "antd";
+import { Alert, Button, Col, Menu, Row, List, Card, Input, notification } from "antd";
 import "antd/dist/antd.css";
 import React, { useCallback, useEffect, useState } from "react";
 import { BrowserRouter, Link, Route, Switch } from "react-router-dom";
 import Web3Modal from "web3modal";
 import "./App.css";
-import { Account, Address, Balance, Contract, Faucet, GasGauge, Header, Ramp, ThemeSwitch } from "./components";
+import {
+  Account,
+  Address,
+  AddressInput,
+  Balance,
+  Contract,
+  Faucet,
+  GasGauge,
+  Header,
+  Ramp,
+  ThemeSwitch,
+} from "./components";
 import { INFURA_ID, NETWORK, NETWORKS } from "./constants";
 import { Transactor } from "./helpers";
 import {
@@ -57,7 +68,7 @@ const DEBUG = false;
 const NETWORKCHECK = true;
 
 // 🛰 providers
-if (DEBUG) console.log("📡 Connecting to Mainnet Ethereum");
+// if (DEBUG) console.log("📡 Connecting to Mainnet Ethereum");
 // const mainnetProvider = getDefaultProvider("mainnet", { infura: INFURA_ID, etherscan: ETHERSCAN_KEY, quorum: 1 });
 // const mainnetProvider = new InfuraProvider("mainnet",INFURA_ID);
 //
@@ -80,7 +91,7 @@ const mainnetInfura = navigator.onLine
 const localProviderUrl = targetNetwork.rpcUrl;
 // as you deploy to other networks you can set REACT_APP_PROVIDER=https://dai.poa.network in packages/react-app/.env
 const localProviderUrlFromEnv = process.env.REACT_APP_PROVIDER ? process.env.REACT_APP_PROVIDER : localProviderUrl;
-if (DEBUG) console.log("🏠 Connecting to provider:", localProviderUrlFromEnv);
+// if (DEBUG) console.log("🏠 Connecting to provider:", localProviderUrlFromEnv);
 const localProvider = new ethers.providers.StaticJsonRpcProvider(localProviderUrlFromEnv);
 
 // 🔭 block explorer URL
@@ -236,47 +247,70 @@ function App(props) {
   const mainnetContracts = useContractLoader(mainnetProvider, contractConfig);
 
   // If you want to call a function on a new block
-  useOnBlock(mainnetProvider, () => {
-    console.log(`⛓ A new mainnet block is here: ${mainnetProvider._lastBlockNumber}`);
-  });
+  // useOnBlock(mainnetProvider, () => {
+  //   console.log(`⛓ A new mainnet block is here: ${mainnetProvider._lastBlockNumber}`);
+  //   // TODO @Balaji Add updateTimeLeft callback function which would update the timeLeft in the UI for staking
+  // });
 
   // Then read your DAI balance like:
-  const myMainnetDAIBalance = useContractReader(mainnetContracts, "DAI", "balanceOf", [
-    "0x34aA3F359A9D614239015126635CE7732c18fDF3",
-  ]);
+  // const myMainnetDAIBalance = useContractReader(mainnetContracts, "DAI", "balanceOf", [
+  //   "0x34aA3F359A9D614239015126635CE7732c18fDF3",
+  // ]);
 
   //keep track of contract balance to know how much has been staked total:
   const stakerContractBalance = useBalance(
     localProvider,
-    readContracts && readContracts.Staker ? readContracts.Staker.address : null,
+    readContracts && readContracts.StakeETV ? readContracts.StakeETV.address : null,
   );
-  if (DEBUG) console.log("💵 stakerContractBalance", stakerContractBalance);
+  // if (DEBUG) console.log("💵 stakerContractBalance", stakerContractBalance);
 
   // ** keep track of total 'threshold' needed of ETH
-  const threshold = useContractReader(readContracts, "Staker", "threshold");
-  console.log("💵 threshold:", threshold);
+  const threshold = useContractReader(readContracts, "StakeETV", "threshold");
+  // console.log("💵 threshold:", threshold);
+
+  const etvBalance = useContractReader(readContracts, "EarnTV", "balanceOf", [address]);
+  // console.log("🏵 etvBalance:", etvBalance ? ethers.utils.formatEther(etvBalance) : "...");
 
   // ** keep track of a variable from the contract in the local React state:
-  const balanceStaked = useContractReader(readContracts, "Staker", "balances", [address]);
-  console.log("💸 balanceStaked:", balanceStaked);
+  // const myStakes = useContractReader(readContracts, "StakeETV", "myStakes", [address]);
+  // console.log("💸 myStakes:", myStakes``);
+  // const { stakedETV } = myStakes;
+  // console.log("stakedETV", stakedETV);
 
   // ** 📟 Listen for broadcast events
-  const stakeEvents = useEventListener(readContracts, "Staker", "Stake", localProvider, 1);
-  console.log("📟 stake events:", stakeEvents);
+  const stakeEvents = useEventListener(readContracts, "StakeETV", "Stake", localProvider, 1);
+  // console.log("📟 stake events:", stakeEvents);
+
+  const unstakeEvents = useEventListener(readContracts, "StakeETV", "Unstake", localProvider, 1);
 
   // ** keep track of a variable from the contract in the local React state:
-  const timeLeft = useContractReader(readContracts, "Staker", "timeLeft");
-  console.log("⏳ timeLeft:", timeLeft);
+  const timeLeft = useContractReader(readContracts, "StakeETV", "timeLeft");
+  // console.log("⏳ timeLeft:", timeLeft);
+
+  const totalETVStaked = useContractReader(readContracts, "StakeETV", "totalETVStaked");
+  // console.log("💸 totalETVStaked:", totalETVStaked);
+
+  /**
+   * Fetch values of contract public functions
+   */
+  const rewardToken = useContractReader(readContracts, "StakeETV", "rewardToken");
+  // console.log("rewardToken: ", rewardToken);
 
   // ** Listen for when the contract has been 'completed'
   const complete = useContractReader(readContracts, "ExampleExternalContract", "completed");
-  console.log("✅ complete:", complete);
+  // console.log("✅ complete:", complete);
 
-  const exampleExternalContractBalance = useBalance(
-    localProvider,
-    readContracts && readContracts.ExampleExternalContract ? readContracts.ExampleExternalContract.address : null,
-  );
-  if (DEBUG) console.log("💵 exampleExternalContractBalance", exampleExternalContractBalance);
+  const etvApproval = useContractReader(readContracts, "EarnTV", "allowance", [
+    address,
+    readContracts && readContracts.StakeETV ? readContracts.StakeETV.address : null,
+  ]);
+  // console.log("🤏 etvApproval", etvApproval);
+
+  // const exampleExternalContractBalance = useBalance(
+  //   localProvider,
+  //   readContracts && readContracts.ExampleExternalContract ? readContracts.ExampleExternalContract.address : null,
+  // );
+  // if (DEBUG) console.log("💵 exampleExternalContractBalance", exampleExternalContractBalance);
 
   let completeDisplay = "";
   if (complete) {
@@ -287,6 +321,37 @@ function App(props) {
       </div>
     );
   }
+
+  const [myStakes, setMyStakes] = useState();
+  const [reward, setReward] = useState();
+  const [userETVBalance, setUserETVBalance] = useState();
+  const [rETVBalance, setrETVBalance] = useState();
+  const [unstakeAmount, setUnstakeAmount] = useState();
+
+  const stakes = useContractReader(readContracts, "StakeETV", "myStakes", [address]);
+  const userReward = useContractReader(readContracts, "StakeETV", "earnedRewards", [address]);
+  const uETVBalance = useContractReader(readContracts, "EarnTV", "balanceOf", [address]);
+  const rewardBalance = useContractReader(readContracts, "Reward", "balanceOf", [address]);
+
+  useEffect(() => {
+    setMyStakes(stakes && stakes.stakedETV ? stakes.stakedETV : 0);
+  }, [readContracts, stakes && stakes.stakedETV]);
+
+  useEffect(() => {
+    setUnstakeAmount(stakes && stakes.unstakeAmount ? stakes.unstakeAmount : 0);
+  }, [readContracts, stakes && stakes.unstakeAmount]);
+
+  useEffect(() => {
+    setReward(userReward);
+  }, [readContracts, userReward]);
+
+  useEffect(() => {
+    setUserETVBalance(userETVBalance);
+  }, [readContracts, uETVBalance]);
+
+  useEffect(() => {
+    setrETVBalance(rewardBalance);
+  }, [readContracts, rewardBalance]);
 
   /*
   const addressFromENS = useResolveName(mainnetProvider, "austingriffith.eth");
@@ -308,17 +373,17 @@ function App(props) {
       writeContracts &&
       mainnetContracts
     ) {
-      console.log("_____________________________________ 🏗 scaffold-eth _____________________________________");
-      console.log("🌎 mainnetProvider", mainnetProvider);
-      console.log("🏠 localChainId", localChainId);
-      console.log("👩‍💼 selected address:", address);
-      console.log("🕵🏻‍♂️ selectedChainId:", selectedChainId);
-      console.log("💵 yourLocalBalance", yourLocalBalance ? ethers.utils.formatEther(yourLocalBalance) : "...");
-      console.log("💵 yourMainnetBalance", yourMainnetBalance ? ethers.utils.formatEther(yourMainnetBalance) : "...");
-      console.log("📝 readContracts", readContracts);
-      console.log("🌍 DAI contract on mainnet:", mainnetContracts);
-      console.log("💵 yourMainnetDAIBalance", myMainnetDAIBalance);
-      console.log("🔐 writeContracts", writeContracts);
+      // console.log("_____________________________________ 🏗 scaffold-eth _____________________________________");
+      // console.log("🌎 mainnetProvider", mainnetProvider);
+      // console.log("🏠 localChainId", localChainId);
+      // console.log("👩‍💼 selected address:", address);
+      // console.log("🕵🏻‍♂️ selectedChainId:", selectedChainId);
+      // console.log("💵 yourLocalBalance", yourLocalBalance ? ethers.utils.formatEther(yourLocalBalance) : "...");
+      // console.log("💵 yourMainnetBalance", yourMainnetBalance ? ethers.utils.formatEther(yourMainnetBalance) : "...");
+      // console.log("📝 readContracts", readContracts);
+      // console.log("🌍 DAI contract on mainnet:", mainnetContracts);
+      // console.log("💵 yourMainnetDAIBalance", myMainnetDAIBalance);
+      // console.log("🔐 writeContracts", writeContracts);
     }
   }, [
     mainnetProvider,
@@ -372,7 +437,7 @@ function App(props) {
                         blockExplorerUrls: [targetNetwork.blockExplorer],
                       },
                     ];
-                    console.log("data", data);
+                    // console.log("data", data);
 
                     let switchTx;
                     // https://docs.metamask.io/guide/rpc-api.html#other-rpc-methods
@@ -478,6 +543,77 @@ function App(props) {
     );
   }
 
+  const [tokenStakeAmount, setTokenStakeAmount] = useState();
+  const [isApproved, setIsApproved] = useState();
+
+  const [tokenUnStakeAmount, setTokenUnStakeAmount] = useState();
+  // console.log(`isApproved returned::::::::::::::::::${isApproved}`);
+
+  useEffect(() => {
+    setIsApproved(etvApproval);
+  }, [readContracts, etvApproval]);
+
+  const [loader, setLoader] = useState();
+
+  let stakeDisplay = "";
+  if (etvBalance) {
+    stakeDisplay = (
+      <div style={{ padding: 8, marginTop: 32, width: 420, margin: "auto" }}>
+        <Card title="Stake tokens">
+          <div>
+            <div style={{ padding: 8 }}>
+              <Input
+                style={{ textAlign: "center" }}
+                placeholder={"amount of tokens to stake"}
+                value={tokenStakeAmount}
+                onChange={e => {
+                  setTokenStakeAmount(e.target.value);
+                }}
+                disabled={isApproved == 0}
+              />
+            </div>
+          </div>
+          {isApproved > 0 ? (
+            <div style={{ padding: 8 }}>
+              <Button disabled={true} type={"primary"}>
+                Approve
+              </Button>
+              <Button
+                type={"primary"}
+                loading={loader}
+                onClick={async () => {
+                  setLoader(true);
+                  await tx(writeContracts.StakeETV.stake(ethers.utils.parseEther("" + tokenStakeAmount)));
+                  setTokenStakeAmount("");
+                  setLoader(false);
+                }}
+              >
+                Stake
+              </Button>
+            </div>
+          ) : (
+            <div style={{ padding: 8 }}>
+              <Button
+                type={"primary"}
+                loading={loader}
+                onClick={async () => {
+                  setLoader(true);
+                  await tx(writeContracts.EarnTV.approve(readContracts.StakeETV.address, ethers.constants.MaxUint256)); // Give Infinite approval
+                  setLoader(false);
+                }}
+              >
+                Approve
+              </Button>
+              <Button disabled={true} type={"primary"}>
+                Stake
+              </Button>
+            </div>
+          )}
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="App">
       {/* ✏️ Edit the header and change the title to your project name */}
@@ -492,10 +628,10 @@ function App(props) {
               }}
               to="/"
             >
-              Staker UI
+              StakeETV UI
             </Link>
           </Menu.Item>
-          <Menu.Item key="/contracts">
+          {/* <Menu.Item key="/contracts">
             <Link
               onClick={() => {
                 setRoute("/contracts");
@@ -504,7 +640,7 @@ function App(props) {
             >
               Debug Contracts
             </Link>
-          </Menu.Item>
+          </Menu.Item> */}
         </Menu>
 
         <Switch>
@@ -512,8 +648,8 @@ function App(props) {
             {completeDisplay}
 
             <div style={{ padding: 8, marginTop: 32 }}>
-              <div>Staker Contract:</div>
-              <Address value={readContracts && readContracts.Staker && readContracts.Staker.address} />
+              <div>StakeETV Contract:</div>
+              <Address value={readContracts && readContracts.StakeETV && readContracts.StakeETV.address} />
             </div>
 
             <div style={{ padding: 8, marginTop: 32 }}>
@@ -522,23 +658,73 @@ function App(props) {
             </div>
 
             <div style={{ padding: 8 }}>
+              <div>ETV Balance | rETV Balance:</div>
+              <Balance balance={uETVBalance} fontSize={64} />/<Balance balance={rETVBalance} fontSize={64} />
+            </div>
+
+            <div style={{ padding: 8 }}>
               <div>Total staked:</div>
-              <Balance balance={stakerContractBalance} fontSize={64} />/<Balance balance={threshold} fontSize={64} />
+              <Balance balance={totalETVStaked} fontSize={64} />/<Balance balance={threshold} fontSize={64} />
             </div>
 
             <div style={{ padding: 8 }}>
               <div>You staked:</div>
-              <Balance balance={balanceStaked} fontSize={64} />
+              <Balance balance={myStakes && myStakes._hex ? myStakes._hex : 0} fontSize={64} />
             </div>
+
+            <div style={{ padding: 8 }}>
+              <div>Rewards:</div>
+              <Balance balance={reward} fontSize={64} />
+            </div>
+
+            {stakeDisplay}
 
             <div style={{ padding: 8 }}>
               <Button
                 type={"default"}
                 onClick={() => {
-                  tx(writeContracts.Staker.execute());
+                  tx(writeContracts.StakeETV.claimRewards());
                 }}
+                disabled={reward == 0}
               >
-                📡 Execute!
+                📡 Claim Rewards!
+              </Button>
+            </div>
+
+            <div style={{ padding: 8, marginTop: 32, width: 420, margin: "auto" }}>
+              <Input
+                style={{ textAlign: "center" }}
+                placeholder={"amount of tokens to unstake"}
+                value={tokenUnStakeAmount}
+                onChange={e => {
+                  // TODO Add a logic to give pop-up when value is greater than unstakeAmount
+                  if (e.target.value > myStakes / 1e18) {
+                    setTokenUnStakeAmount("");
+                    notification.error({
+                      message: "Amount greater than staked value",
+                      description: `Staked ${myStakes / 1e18}, Unstake amount ${e.target.value}`,
+                      placement: "topRight",
+                    });
+                  } else {
+                    setTokenUnStakeAmount(e.target.value);
+                  }
+                }}
+                disabled={myStakes == 0}
+              />
+            </div>
+
+            <div style={{ padding: 8 }}>
+              <Button
+                type={"default"}
+                onClick={async () => {
+                  setLoader(true);
+                  await tx(writeContracts.StakeETV.unstake(ethers.utils.parseEther("" + tokenUnStakeAmount)));
+                  setLoader(false);
+                  setTokenUnStakeAmount("");
+                }}
+                disabled={!tokenUnStakeAmount || tokenUnStakeAmount == 0}
+              >
+                📡 Unstake!
               </Button>
             </div>
 
@@ -546,21 +732,11 @@ function App(props) {
               <Button
                 type={"default"}
                 onClick={() => {
-                  tx(writeContracts.Staker.withdraw());
+                  tx(writeContracts.StakeETV.withdraw());
                 }}
+                disabled={!unstakeAmount || unstakeAmount == 0}
               >
                 🏧 Withdraw
-              </Button>
-            </div>
-
-            <div style={{ padding: 8 }}>
-              <Button
-                type={balanceStaked ? "success" : "primary"}
-                onClick={() => {
-                  tx(writeContracts.Staker.stake({ value: ethers.utils.parseEther("0.01") }));
-                }}
-              >
-                🥩 Stake 0.5 ether!
               </Button>
             </div>
 
@@ -577,7 +753,22 @@ function App(props) {
                 renderItem={item => {
                   return (
                     <List.Item key={item.blockNumber}>
-                      <Address value={item.args[0]} ensProvider={mainnetProvider} fontSize={16} /> =>
+                      <Address value={item.args[0]} ensProvider={mainnetProvider} fontSize={16} />
+                      <Balance balance={item.args[1]} />
+                    </List.Item>
+                  );
+                }}
+              />
+            </div>
+
+            <div style={{ width: 500, margin: "auto", marginTop: 64 }}>
+              <div>UnStake Events:</div>
+              <List
+                dataSource={unstakeEvents}
+                renderItem={item => {
+                  return (
+                    <List.Item key={item.blockNumber}>
+                      <Address value={item.args[0]} ensProvider={mainnetProvider} fontSize={16} />
                       <Balance balance={item.args[1]} />
                     </List.Item>
                   );
@@ -598,7 +789,7 @@ function App(props) {
           </Route>
           <Route path="/contracts">
             <Contract
-              name="Staker"
+              name="EarnTV"
               signer={userSigner}
               provider={localProvider}
               address={address}
@@ -606,7 +797,15 @@ function App(props) {
               contractConfig={contractConfig}
             />
             <Contract
-              name="ExampleExternalContract"
+              name="StakeETV"
+              signer={userSigner}
+              provider={localProvider}
+              address={address}
+              blockExplorer={blockExplorer}
+              contractConfig={contractConfig}
+            />
+            <Contract
+              name="Reward"
               signer={userSigner}
               provider={localProvider}
               address={address}
@@ -637,13 +836,8 @@ function App(props) {
 
       <div style={{ marginTop: 32, opacity: 0.5 }}>
         {/* Add your address here */}
-        Created by <Address value={"Your...address"} ensProvider={mainnetProvider} fontSize={16} />
-      </div>
-
-      <div style={{ marginTop: 32, opacity: 0.5 }}>
-        <a target="_blank" style={{ padding: 32, color: "#000" }} href="https://github.com/scaffold-eth/scaffold-eth">
-          🍴 Fork me!
-        </a>
+        Created by{" "}
+        <Address value={"0x63d596e6b6399bbb3cFA3075968946b870045955"} ensProvider={mainnetProvider} fontSize={16} />
       </div>
 
       {/* 🗺 Extra UI like gas price, eth price, faucet, and support: */}
