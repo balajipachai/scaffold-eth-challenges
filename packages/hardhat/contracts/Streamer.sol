@@ -2,34 +2,89 @@
 pragma solidity 0.8.4;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "hardhat/console.sol";
 
+/**
+ * Challenge solver: <iamdoraemon.eth>
+ * The Streamer contract allows users to fund, challenge, and close payment channels, as well as withdraw
+ * earnings using a voucher with a verified signature.
+ */
 contract Streamer is Ownable {
-    event Opened(address, uint256);
-    event Challenged(address);
-    event Withdrawn(address, uint256);
-    event Closed(address);
+    /* 
+    `struct Voucher` is defining a data structure that contains two fields: 
+        `updatedBalance` of type `uint256` and 
+        `sig` of type `Signature`.
+    This data structure is likely used to represent a voucher that can be used to withdraw earnings
+    from a payment channel in the `withdrawEarnings` function. The `updatedBalance` field represents
+    the updated balance of the voucher, while the `sig` field represents the signature of the voucher.
+    */
+    struct Voucher {
+        uint256 updatedBalance;
+        Signature sig;
+    }
 
+    /* The `struct Signature` is defining a data structure that contains three fields: 
+        `r` of type `bytes32`, 
+        `s` of type `bytes32`,
+        and `v` of type `uint8`. 
+    This data structure is likely used to represent a signature that can be used to verify the authenticity of a voucher
+    in the `withdrawEarnings` function.
+    The `r` and `s` fields represent the two components of the signature, while the `v` field represents the recovery identifier.
+    */
+    struct Signature {
+        bytes32 r;
+        bytes32 s;
+        uint8 v;
+    }
+
+    /* 
+    These are two mappings in the Streamer contract. 
+    balances => To trach user's funds in the smart contract.
+    canCloseAt => To get the channel closing timestamp.
+    */
     mapping(address => uint256) balances;
     mapping(address => uint256) canCloseAt;
 
+    /* 
+    These are event declarations in the Streamer contract.Events are a way for contracts to communicate with
+    the outside world and notify external applications when certain actions occur on the blockchain.
+    */
+    event Opened(address rube, uint256 amount);
+    event Challenged(address rube);
+    event Withdrawn(address rube, uint256 amount);
+    event Closed(address rube);
+
+    /**
+     * @notice The function allows a user to fund a payment channel with a minimum of 0.5 ether and opens the
+     * channel if the user does not already have a running channel.
+     */
     function fundChannel() public payable {
-        /*
-        Checkpoint 3: fund a channel
-
-        complete this function so that it:
-        - reverts if msg.sender already has a running channel (ie, if balances[msg.sender] != 0)
-        - updates the balances mapping with the eth received in the function call
-        - emits an Opened event
-        */
+        require(msg.value >= 0.5 ether, "Insufficient funds");
+        require(balances[msg.sender] == 0, "Already has a running channel");
+        balances[msg.sender] = msg.value;
+        emit Opened(msg.sender, msg.value);
     }
 
+    /**
+     * @notice This function returns the time left until a channel can be closed in a smart contract.
+     * @param channel: The channel address.
+     * @dev The function `timeLeft` returns the time left until the channel can be closed, which is calculated by
+     * subtracting the current block timestamp from the `canCloseAt` timestamp stored for the given `channel` address.
+     * If the `canCloseAt` timestamp is not set (i.e. equal to 0), the function returns 0.
+     */
     function timeLeft(address channel) public view returns (uint256) {
-        require(canCloseAt[channel] != 0, "channel is not closing");
-        return canCloseAt[channel] - block.timestamp;
+        if (canCloseAt[channel] > 0) {
+            return canCloseAt[channel] - block.timestamp;
+        }
+        return 0;
     }
 
-    function withdrawEarnings(Voucher calldata voucher) public {
+    /**
+     * @notice The function allows the owner to withdraw earnings from a voucher by verifying the signature and transferring
+     * the payout to the signer's address.
+     * @param voucher - A calldata struct that contains the necessary information to withdraw earnings,
+     * including the updated balance of the voucher, and the signature (v, r, s) of the voucher.
+     */
+    function withdrawEarnings(Voucher calldata voucher) public onlyOwner {
         // like the off-chain code, signatures are applied to the hash of the data
         // instead of the raw data itself
         bytes32 hashed = keccak256(abi.encode(voucher.updatedBalance));
@@ -49,44 +104,47 @@ contract Streamer is Ownable {
         );
         bytes32 prefixedHashed = keccak256(prefixed);
 
-        /*
-        Checkpoint 5: Recover earnings
+        address signer = ecrecover(
+            prefixedHashed,
+            voucher.sig.v,
+            voucher.sig.r,
+            voucher.sig.s
+        );
+        require(
+            balances[signer] > voucher.updatedBalance,
+            "insufficient balance"
+        );
+        uint256 payout = balances[signer] - voucher.updatedBalance;
 
-        The service provider would like to cash out their hard earned ether.
-            - use ecrecover on prefixedHashed and the supplied signature
-            - require that the recovered signer has a running channel with balances[signer] > v.updatedBalance
-            - calculate the payment when reducing balances[signer] to v.updatedBalance
-            - adjust the channel balance, and pay the contract owner. (Get the owner address withthe `owner()` function)
-            - emit the Withdrawn event
-        */
+        balances[signer] -= payout;
+
+        (bool success, ) = owner().call{value: payout}("");
+        require(success, "Eth transfer failed");
+
+        emit Withdrawn(msg.sender, payout);
     }
 
-    /*
-    Checkpoint 6a: Challenge the channel
-
-    create a public challengeChannel() function that:
-    - checks that msg.sender has an open channel
-    - updates canCloseAt[msg.sender] to some future time
-    - emits a Challenged event
-    */
-
-    /*
-    Checkpoint 6b: Close the channel
-
-    create a public defundChannel() function that:
-    - checks that msg.sender has a closing channel
-    - checks that the current time is later than the closing time
-    - sends the channel's remaining funds to msg.sender, and sets the balance to 0
-    - emits the Closed event
-    */
-
-    struct Voucher {
-        uint256 updatedBalance;
-        Signature sig;
+    /**
+     * @dev This function allows a user to challenge a running channel by setting a time limit for it to be closed.
+     */
+    function challengeChannel() public {
+        require(balances[msg.sender] != 0, "No running channel");
+        canCloseAt[msg.sender] = block.timestamp + 30 minutes;
+        emit Challenged(msg.sender);
     }
-    struct Signature {
-        bytes32 r;
-        bytes32 s;
-        uint8 v;
+
+    /**
+     * @dev The function allows a user to close and withdraw funds from a channel if the closing time has passed.
+     */
+    function defundChannel() public {
+        require(canCloseAt[msg.sender] > 0, "Closed channel");
+        require(
+            block.timestamp > canCloseAt[msg.sender],
+            "Current time is < closing time"
+        );
+        (bool success, ) = msg.sender.call{value: balances[msg.sender]}("");
+        require(success, "defundChannel: ETH transfer failed");
+        balances[msg.sender] = 0;
+        emit Closed(msg.sender);
     }
 }

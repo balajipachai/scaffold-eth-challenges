@@ -52,10 +52,10 @@ const { ethers } = require("ethers");
 */
 
 /// 📡 What chain are your contracts deployed to?
-const targetNetwork = NETWORKS.localhost; // <------- select your target frontend network (localhost, rinkeby, xdai, mainnet)
+const targetNetwork = NETWORKS.sepolia; // <------- select your target frontend network (localhost, rinkeby, xdai, mainnet)
 
 // 😬 Sorry for all the console logging
-const DEBUG = true;
+const DEBUG = false;
 const NETWORKCHECK = true;
 
 // 🛰 providers
@@ -244,10 +244,12 @@ function App(props) {
 
   // ** 📟 Listen for on-chain channel events
   const openEvents = useEventListener(readContracts, "Streamer", "Opened", localProvider, 1);
-  console.log("open events:", openEvents);
+  // console.log("open events:", openEvents);
   const challengeEvents = useEventListener(readContracts, "Streamer", "Challenged", localProvider, 1);
-  console.log("close events:", challengeEvents);
+  // console.log("close events:", challengeEvents);
   const closeEvents = useEventListener(readContracts, "Streamer", "Closed", localProvider, 1);
+
+  console.log("vouchers are : ", JSON.stringify(vouchers()));
 
   function onchainChannels() {
     let opened = [];
@@ -278,22 +280,24 @@ function App(props) {
   }
 
   const chainChannels = onchainChannels();
-  console.log(`chanStat:\n${JSON.stringify(chainChannels)}`);
+  // console.log(`chanStat:\n${JSON.stringify(chainChannels)}`);
 
   const timeLeft = useContractReader(readContracts, "Streamer", "timeLeft", [address]);
-  console.log("timeleft: " + timeLeft);
+  // console.log("timeleft: " + timeLeft);
 
   const userAddress = useUserAddress(userSigner);
   const ownerAddress = useContractReader(readContracts, "Streamer", "owner");
-  console.log("User:  %s\nOwner: %s", userAddress, ownerAddress);
+  // console.log("User:  %s\nOwner: %s", userAddress, ownerAddress);
 
   const userIsOwner = ownerAddress == userAddress;
+
+  console.log(`**************************************userIsOwner************************************** ${userIsOwner}`);
 
   if (onchainChannels().challenged.length === 0) {
     // turn off the noisy interval mining if there are
     // no expected challenge channels after this tx
     try {
-      localProvider.send("evm_setIntervalMining", [0]);
+      // localProvider.send("evm_setIntervalMining", [0]);
     } catch (e) {}
   }
 
@@ -317,6 +321,10 @@ function App(props) {
   */
   const channel = getUserChannel();
 
+  console.log(
+    `********************************getUserCahnnel:********************************${JSON.stringify(channel)}`,
+  );
+
   /**
    * to prevent repeated instantiations on react rerenders
    * @returns {BroadcastChannel}
@@ -329,8 +337,6 @@ function App(props) {
     return window.userChannel;
   }
 
-
-  
   //This is the wisdome the client is paying for. It'd better be good.
   let recievedWisdom = "";
 
@@ -348,7 +354,7 @@ function App(props) {
       return;
     }
 
-    console.log("Received: %s", e.data);
+    console.log("**************************Received************************************: %s", e.data);
     recievedWisdom = e.data;
     document.getElementById("recievedWisdom-" + userAddress).innerText = recievedWisdom;
 
@@ -462,6 +468,8 @@ function App(props) {
      * @param {MessageEvent<{updatedBalance: string, signature: string}>} voucher
      */
     function processVoucher(voucher) {
+      console.log("**************************************************************************");
+      console.log("voucher in processVoucher is: ", voucher);
       // recreate a BigNumber object from the message. v.data.updatedBalance is
       // a string representation of the BigNumber for transit over the network
       const updatedBalance = ethers.BigNumber.from(voucher.data.updatedBalance);
@@ -474,7 +482,20 @@ function App(props) {
        *  recreate the packed, hashed, and arrayified message from reimburseService (above),
        *  and then use ethers.utils.verifyMessage() to confirm that voucher signer was
        *  `clientAddress`. (If it wasn't, log some error message and return).
-      */
+       */
+      const packed = ethers.utils.solidityPack(["uint256"], [updatedBalance]);
+      const hashed = ethers.utils.keccak256(packed);
+      const arrayified = ethers.utils.arrayify(hashed);
+
+      const signer = ethers.utils.verifyMessage(arrayified, voucher.data.signature);
+
+      console.log(`************************signer****************************`, signer);
+
+      if (signer != clientAddress) {
+        console.log("Signer is different than clientAddress, thus exiting");
+        console.log(`Signer: ${signer}, ClientAddress: ${clientAddress}`);
+        return;
+      }
 
       const existingVoucher = vouchers()[clientAddress];
 
@@ -483,7 +504,7 @@ function App(props) {
         vouchers()[clientAddress] = voucher.data;
         vouchers()[clientAddress].updatedBalance = updatedBalance;
         updateClaimable(clientAddress);
-        // logVouchers();
+        logVouchers();
       }
     }
   }
@@ -531,7 +552,8 @@ function App(props) {
     const channelInput = document.getElementById("input-" + clientAddress);
     if (channelInput) {
       const wisdom = channelInput.value;
-      // console.log("sending: %s", wisdom);
+      console.log("sending: %s", wisdom);
+      console.log(`Created channels are: ${JSON.stringify(channels)}`);
       channels[clientAddress].postMessage(wisdom);
       document.getElementById(`provided-${clientAddress}`).innerText = wisdom.length;
     } else {
@@ -550,7 +572,7 @@ function App(props) {
    */
   async function claimPaymentOnChain(clientAddress) {
     console.log("Claiming voucher on chain...");
-    // logVouchers();
+    logVouchers();
 
     if (vouchers()[clientAddress] == undefined) {
       console.warn(`no voucher found for ${clientAddress}`);
@@ -573,13 +595,13 @@ function App(props) {
   //
   useEffect(() => {
     if (DEBUG && address && selectedChainId && yourLocalBalance && readContracts && writeContracts) {
-      console.log("_____________________________________ 🏗 scaffold-eth _____________________________________");
-      console.log("🏠 localChainId", localChainId);
-      console.log("👩‍💼 selected address:", address);
-      console.log("🕵🏻‍♂️ selectedChainId:", selectedChainId);
-      console.log("💵 yourLocalBalance", yourLocalBalance ? ethers.utils.formatEther(yourLocalBalance) : "...");
-      console.log("📝 readContracts", readContracts);
-      console.log("🔐 writeContracts", writeContracts);
+      // console.log("_____________________________________ 🏗 scaffold-eth _____________________________________");
+      // console.log("🏠 localChainId", localChainId);
+      // console.log("👩‍💼 selected address:", address);
+      // console.log("🕵🏻‍♂️ selectedChainId:", selectedChainId);
+      // console.log("💵 yourLocalBalance", yourLocalBalance ? ethers.utils.formatEther(yourLocalBalance) : "...");
+      // console.log("📝 readContracts", readContracts);
+      // console.log("🔐 writeContracts", writeContracts);
     }
   }, [address, selectedChainId, yourLocalBalance, readContracts, writeContracts]);
 
@@ -624,7 +646,7 @@ function App(props) {
                         blockExplorerUrls: [targetNetwork.blockExplorer],
                       },
                     ];
-                    console.log("data", data);
+                    // console.log("data", data);
 
                     let switchTx;
                     // https://docs.metamask.io/guide/rpc-api.html#other-rpc-methods
@@ -790,7 +812,6 @@ function App(props) {
                           provideService(clientAddress);
                         }}
                       ></TextArea>
-
                       <Card style={{ margin: 5 }} id={`status-${clientAddress}`}>
                         <div>
                           Served: <strong id={`provided-${clientAddress}`}>0</strong>&nbsp;chars
@@ -799,8 +820,6 @@ function App(props) {
                           Recieved: <strong id={`claimable-${clientAddress}`}>0</strong>&nbsp;ETH
                         </div>
                       </Card>
-
-                      {/* Checkpoint 5:
                       <Button
                         style={{ margin: 5 }}
                         type="primary"
@@ -811,7 +830,7 @@ function App(props) {
                         }}
                       >
                         Cash out latest voucher
-                      </Button> */}
+                      </Button>
                     </List.Item>
                   )}
                 ></List>
@@ -846,15 +865,11 @@ function App(props) {
                           AutoPay
                         </Checkbox>
                       </Col>
-
                       <Col span={16}>
                         <Card title="Received Wisdom">
                           <span id={"recievedWisdom-" + userAddress}></span>
                         </Card>
                       </Col>
-
-                      {/* Checkpoint 6: challenge & closure
-
                       <Col span={5}>
                         <Button
                           disabled={hasClosingChannel()}
@@ -866,7 +881,7 @@ function App(props) {
                             try {
                               // ensure a 'ticking clock' for the UI without having
                               // to send new transactions & mine new blocks
-                              localProvider.send("evm_setIntervalMining", [5000]);
+                              // localProvider.send("evm_setIntervalMining", [5000]);
                             } catch (e) {}
                           }}
                         >
@@ -887,7 +902,7 @@ function App(props) {
                         >
                           Close and withdraw funds
                         </Button>
-                      </Col> */}
+                      </Col>
                     </Row>
                   </div>
                 ) : hasClosedChannel() ? (
@@ -953,7 +968,8 @@ function App(props) {
 
       <div style={{ marginTop: 32, opacity: 0.5 }}>
         {/* todo: Add your address here */}
-        Created by <Address value={"Your...address"} ensProvider={mainnetProvider} fontSize={16} />
+        Created by{" "}
+        <Address value={"0x63d596e6b6399bbb3cFA3075968946b870045955"} ensProvider={mainnetProvider} fontSize={16} />
       </div>
 
       <div style={{ marginTop: 32, opacity: 0.5 }}>

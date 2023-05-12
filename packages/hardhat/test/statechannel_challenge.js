@@ -28,10 +28,13 @@ describe(" 🕞 Statechannel Challenge: The Guru's Offering 👑", function () {
    * @param {string} b
    */
   async function assertBalance(b) {
-    const balance = await network.provider.send("eth_getBalance", [streamerContract.address]);
-    console.log('\t',"💵 Balance",ethers.utils.formatEther(balance));
-    expect(await network.provider.send("eth_getBalance", [streamerContract.address])).to.equal(ethers.utils.parseEther(b)); 
-    return;
+    const balance = await network.provider.send("eth_getBalance", [
+      streamerContract.address,
+    ]);
+    console.log("\t", "💵 Balance", ethers.utils.formatEther(balance));
+    expect(
+      await network.provider.send("eth_getBalance", [streamerContract.address])
+    ).to.equal(ethers.utils.parseEther(b));
   }
 
   /**
@@ -57,10 +60,9 @@ describe(" 🕞 Statechannel Challenge: The Guru's Offering 👑", function () {
   }
 
   describe("Streamer.sol", function () {
-
     let contractArtifact;
-    if(process.env.CONTRACT_ADDRESS){
-      contractArtifact = `contracts/${process.env.CONTRACT_ADDRESS}.sol:Streamer`
+    if (process.env.CONTRACT_ADDRESS) {
+      contractArtifact = `contracts/${process.env.CONTRACT_ADDRESS}.sol:Streamer`;
     } else {
       contractArtifact = "contracts/Streamer.sol:Streamer";
     }
@@ -68,20 +70,20 @@ describe(" 🕞 Statechannel Challenge: The Guru's Offering 👑", function () {
     it("Should deploy the contract", async function () {
       const streamerFct = await ethers.getContractFactory(contractArtifact);
       streamerContract = await streamerFct.deploy();
-      console.log('\t', "🛫 Contract deployed",streamerContract.address);
+      console.log("\t", "🛫 Contract deployed", streamerContract.address);
     });
 
     it("Should allow channel funding & emit Opened event", async function () {
-      console.log('\t', "💸 Funding first channel...");
+      console.log("\t", "💸 Funding first channel...");
       const fundingTx = await streamerContract.fundChannel({
         value: ethers.utils.parseEther("1"),
       });
-      console.log('\t',"⏫  Checking emit");
+      console.log("\t", "⏫  Checking emit");
       await expect(fundingTx).to.emit(streamerContract, "Opened");
     });
 
     it("Should refuse multiple funding from single user", async function () {
-      console.log('\t',"🔃 Attempting to fund the channel again...");
+      console.log("\t", "🔃 Attempting to fund the channel again...");
       await expect(
         streamerContract.fundChannel({
           value: ethers.utils.parseEther("1"), // first funded channel
@@ -92,21 +94,21 @@ describe(" 🕞 Statechannel Challenge: The Guru's Offering 👑", function () {
     it("Should allow multiple client channels", async function () {
       const [, alice, bob] = await ethers.getSigners();
 
-      console.log('\t',"💸 Funding a second channel...");
+      console.log("\t", "💸 Funding a second channel...");
       await expect(
         streamerContract.connect(alice).fundChannel({
           value: ethers.utils.parseEther("1"), // second funded channel
         })
       ).to.emit(streamerContract, "Opened");
 
-      console.log('\t',"💸 Funding a third channel...");
+      console.log("\t", "💸 Funding a third channel...");
       await expect(
         streamerContract.connect(bob).fundChannel({
           value: ethers.utils.parseEther("1"), // third funded channel
         })
       ).to.emit(streamerContract, "Opened");
 
-      console.log('\t',"💵 Expecting contract balance to equal 3...");
+      console.log("\t", "💵 Expecting contract balance to equal 3...");
       await assertBalance("3"); // running total
     });
 
@@ -114,15 +116,15 @@ describe(" 🕞 Statechannel Challenge: The Guru's Offering 👑", function () {
       const [, alice] = await ethers.getSigners();
 
       const updatedBalance = ethers.utils.parseEther("0.5"); // cut channel balance from 1 -> 0.5
-      console.log('\t', "📩 Creating voucher...");
+      console.log("\t", "📩 Creating voucher...");
       const voucher = await createVoucher(updatedBalance, alice);
 
-      console.log('\t', "🔼 Expecting to withdraw funds and emit Withdrawn...");
+      console.log("\t", "🔼 Expecting to withdraw funds and emit Withdrawn...");
       await expect(streamerContract.withdrawEarnings(voucher)).to.emit(
         streamerContract,
         "Withdrawn"
       );
-      console.log('\t',"💵 Expecting contract balance to equal 2.5...");
+      console.log("\t", "💵 Expecting contract balance to equal 2.5...");
       await assertBalance("2.5"); // 3 - 0.5 = 2.5
     });
 
@@ -130,12 +132,12 @@ describe(" 🕞 Statechannel Challenge: The Guru's Offering 👑", function () {
       const [, alice] = await ethers.getSigners();
 
       const updatedBalance = ethers.utils.parseEther("0.5"); // equal to the current balance, should fail
-      console.log('\t', "📩 Creating voucher...");
+      console.log("\t", "📩 Creating voucher...");
       const voucher = await createVoucher(updatedBalance, alice);
 
-      console.log('\t', "🛑 Attempting a redundant withdraw...");
+      console.log("\t", "🛑 Attempting a redundant withdraw...");
       await expect(streamerContract.withdrawEarnings(voucher)).to.be.reverted;
-      console.log('\t',"💵 Expecting contract balance to equal 2.5...");
+      console.log("\t", "💵 Expecting contract balance to equal 2.5...");
       await assertBalance("2.5"); // contract total unchanged because withdrawal fails
     });
 
@@ -143,21 +145,22 @@ describe(" 🕞 Statechannel Challenge: The Guru's Offering 👑", function () {
       const [, , , carol] = await ethers.getSigners(); // carol has no open channel
 
       const updatedBalance = ethers.utils.parseEther("0.5");
-      console.log('\t', "📩 Creating voucher...");
+      console.log("\t", "📩 Creating voucher...");
       const voucher = await createVoucher(updatedBalance, carol);
 
-      console.log('\t', "🛑 Attempting an illegitimate withdraw...");
+      console.log("\t", "🛑 Attempting an illegitimate withdraw...");
       await expect(streamerContract.withdrawEarnings(voucher)).to.be.reverted;
-      console.log('\t',"💵 Expecting contract balance to equal 2.5...");
+      console.log("\t", "💵 Expecting contract balance to equal 2.5...");
       await assertBalance("2.5"); // contract total unchanged because carol has no channel
     });
 
     it("Should refuse defunding when no challenge has been registered", async function () {
       const [, , bob] = await ethers.getSigners();
 
-      console.log('\t', "🛑 Attempting illegitimate defundChannel...");
-      await expect(streamerContract.connect(bob).defundChannel()).to.be.reverted;
-      console.log('\t',"💵 Expecting contract balance to equal 2.5...");
+      console.log("\t", "🛑 Attempting illegitimate defundChannel...");
+      await expect(streamerContract.connect(bob).defundChannel()).to.be
+        .reverted;
+      console.log("\t", "💵 Expecting contract balance to equal 2.5...");
       await assertBalance("2.5"); // contract total unchanged because defund fails
     });
 
@@ -167,16 +170,17 @@ describe(" 🕞 Statechannel Challenge: The Guru's Offering 👑", function () {
         streamerContract,
         "Challenged"
       );
-      console.log('\t',"💵 Expecting contract balance to equal 2.5...");
+      console.log("\t", "💵 Expecting contract balance to equal 2.5...");
       await assertBalance("2.5"); // contract total unchanged because challenge does not move funds
     });
 
     it("Should refuse defunding during the challenge period", async function () {
       const [, , bob] = await ethers.getSigners();
 
-      console.log('\t',"🛑 Attempting illegitimate defundChannel...");
-      await expect(streamerContract.connect(bob).defundChannel()).to.be.reverted;
-      console.log('\t',"💵 Expecting contract balance to equal 2.5...");
+      console.log("\t", "🛑 Attempting illegitimate defundChannel...");
+      await expect(streamerContract.connect(bob).defundChannel()).to.be
+        .reverted;
+      console.log("\t", "💵 Expecting contract balance to equal 2.5...");
       await assertBalance("2.5"); // contract total unchanged becaues defund fails
     });
 
@@ -186,27 +190,39 @@ describe(" 🕞 Statechannel Challenge: The Guru's Offering 👑", function () {
       const initBobBalance = ethers.BigNumber.from(
         await network.provider.send("eth_getBalance", [bob.address])
       );
-      console.log('\t', "💰 Initial user balance:",ethers.utils.formatEther(initBobBalance));
-      console.log('\t', "🕐 Increasing time...");
+      console.log(
+        "\t",
+        "💰 Initial user balance:",
+        ethers.utils.formatEther(initBobBalance)
+      );
+      console.log("\t", "🕐 Increasing time...");
       network.provider.send("evm_increaseTime", [3600]); // fast-forward one hour
       network.provider.send("evm_mine");
 
-      console.log('\t', "💲 Attempting a legitimate defundChannel...");  
+      console.log("\t", "💲 Attempting a legitimate defundChannel...");
       await expect(streamerContract.connect(bob).defundChannel()).to.emit(
         streamerContract,
         "Closed"
       );
-      console.log('\t',"💵 Expecting contract balance to equal 1.5...");
+      console.log("\t", "💵 Expecting contract balance to equal 1.5...");
       await assertBalance("1.5"); // 2.5-1 = 1.5 (bob defunded his unused channel)
 
       const finalBobBalance = ethers.BigNumber.from(
         await network.provider.send("eth_getBalance", [bob.address])
       );
 
-      console.log('\t',"💰 User's final balance:", ethers.utils.formatEther(finalBobBalance));
+      console.log(
+        "\t",
+        "💰 User's final balance:",
+        ethers.utils.formatEther(finalBobBalance)
+      );
       // check that bob's channel balance returned to bob's address
       const difference = finalBobBalance.sub(initBobBalance);
-      console.log('\t',"💵 Checking that final balance went up by ~1 eth. Increase", ethers.utils.formatEther(difference));
+      console.log(
+        "\t",
+        "💵 Checking that final balance went up by ~1 eth. Increase",
+        ethers.utils.formatEther(difference)
+      );
       assert(difference.gt(ethers.utils.parseEther("0.99")));
     });
   });
