@@ -12,4 +12,6 @@ interface IERC20Extended is IERC20 {
         uint256[] memory amounts,
         bytes32[] memory activities
     ) external;
+
+    function owner() external returns(address);
 }

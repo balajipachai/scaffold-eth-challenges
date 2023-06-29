@@ -260,49 +260,49 @@ function App(props) {
   //keep track of contract balance to know how much has been staked total:
   const stakerContractBalance = useBalance(
     localProvider,
-    readContracts && readContracts.StakeETV ? readContracts.StakeETV.address : null,
+    readContracts && readContracts.Stake ? readContracts.Stake.address : null,
   );
   // if (DEBUG) console.log("💵 stakerContractBalance", stakerContractBalance);
 
   // ** keep track of total 'threshold' needed of ETH
-  const threshold = useContractReader(readContracts, "StakeETV", "threshold");
+  const threshold = useContractReader(readContracts, "Stake", "threshold");
   // console.log("💵 threshold:", threshold);
 
-  const etvBalance = useContractReader(readContracts, "EarnTV", "balanceOf", [address]);
-  // console.log("🏵 etvBalance:", etvBalance ? ethers.utils.formatEther(etvBalance) : "...");
+  const mtkBalance = useContractReader(readContracts, "MyToken", "balanceOf", [address]);
+  // console.log("🏵 mtkBalance:", mtkBalance ? ethers.utils.formatEther(mtkBalance) : "...");
 
   // ** keep track of a variable from the contract in the local React state:
-  // const myStakes = useContractReader(readContracts, "StakeETV", "myStakes", [address]);
+  // const myStakes = useContractReader(readContracts, "Stake", "myStakes", [address]);
   // console.log("💸 myStakes:", myStakes``);
   // const { stakedETV } = myStakes;
   // console.log("stakedETV", stakedETV);
 
   // ** 📟 Listen for broadcast events
-  const stakeEvents = useEventListener(readContracts, "StakeETV", "Stake", localProvider, 1);
+  const stakeEvents = useEventListener(readContracts, "Stake", "Stake", localProvider, 1);
   // console.log("📟 stake events:", stakeEvents);
 
-  const unstakeEvents = useEventListener(readContracts, "StakeETV", "Unstake", localProvider, 1);
+  const unstakeEvents = useEventListener(readContracts, "Stake", "Unstake", localProvider, 1);
 
   // ** keep track of a variable from the contract in the local React state:
-  const timeLeft = useContractReader(readContracts, "StakeETV", "timeLeft");
+  const timeLeft = useContractReader(readContracts, "Stake", "timeLeft");
   // console.log("⏳ timeLeft:", timeLeft);
 
-  const totalETVStaked = useContractReader(readContracts, "StakeETV", "totalETVStaked");
-  // console.log("💸 totalETVStaked:", totalETVStaked);
+  const totalMTKStaked = useContractReader(readContracts, "Stake", "totalMTKStaked");
+  // console.log("💸 totalMTKStaked:", totalMTKStaked);
 
   /**
    * Fetch values of contract public functions
    */
-  const rewardToken = useContractReader(readContracts, "StakeETV", "rewardToken");
+  const rewardToken = useContractReader(readContracts, "Stake", "rewardToken");
   // console.log("rewardToken: ", rewardToken);
 
   // ** Listen for when the contract has been 'completed'
   const complete = useContractReader(readContracts, "ExampleExternalContract", "completed");
   // console.log("✅ complete:", complete);
 
-  const etvApproval = useContractReader(readContracts, "EarnTV", "allowance", [
+  const etvApproval = useContractReader(readContracts, "MyToken", "allowance", [
     address,
-    readContracts && readContracts.StakeETV ? readContracts.StakeETV.address : null,
+    readContracts && readContracts.Stake ? readContracts.Stake.address : null,
   ]);
   // console.log("🤏 etvApproval", etvApproval);
 
@@ -324,13 +324,13 @@ function App(props) {
 
   const [myStakes, setMyStakes] = useState();
   const [reward, setReward] = useState();
-  const [userETVBalance, setUserETVBalance] = useState();
-  const [rETVBalance, setrETVBalance] = useState();
+  const [userMTKBalance, setUserMTKBalance] = useState();
+  const [rMTKBalance, setrMTKBalance] = useState();
   const [unstakeAmount, setUnstakeAmount] = useState();
 
-  const stakes = useContractReader(readContracts, "StakeETV", "myStakes", [address]);
-  const userReward = useContractReader(readContracts, "StakeETV", "earnedRewards", [address]);
-  const uETVBalance = useContractReader(readContracts, "EarnTV", "balanceOf", [address]);
+  const stakes = useContractReader(readContracts, "Stake", "myStakes", [address]);
+  const userReward = useContractReader(readContracts, "Stake", "earnedRewards", [address]);
+  const uMTKBalance = useContractReader(readContracts, "MyToken", "balanceOf", [address]);
   const rewardBalance = useContractReader(readContracts, "Reward", "balanceOf", [address]);
 
   useEffect(() => {
@@ -346,11 +346,11 @@ function App(props) {
   }, [readContracts, userReward]);
 
   useEffect(() => {
-    setUserETVBalance(userETVBalance);
-  }, [readContracts, uETVBalance]);
+    setUserMTKBalance(userMTKBalance);
+  }, [readContracts, uMTKBalance]);
 
   useEffect(() => {
-    setrETVBalance(rewardBalance);
+    setrMTKBalance(rewardBalance);
   }, [readContracts, rewardBalance]);
 
   /*
@@ -556,7 +556,7 @@ function App(props) {
   const [loader, setLoader] = useState();
 
   let stakeDisplay = "";
-  if (etvBalance) {
+  if (mtkBalance) {
     stakeDisplay = (
       <div style={{ padding: 8, marginTop: 32, width: 420, margin: "auto" }}>
         <Card title="Stake tokens">
@@ -583,7 +583,7 @@ function App(props) {
                 loading={loader}
                 onClick={async () => {
                   setLoader(true);
-                  await tx(writeContracts.StakeETV.stake(ethers.utils.parseEther("" + tokenStakeAmount)));
+                  await tx(writeContracts.Stake.stake(ethers.utils.parseEther("" + tokenStakeAmount)));
                   setTokenStakeAmount("");
                   setLoader(false);
                 }}
@@ -598,7 +598,7 @@ function App(props) {
                 loading={loader}
                 onClick={async () => {
                   setLoader(true);
-                  await tx(writeContracts.EarnTV.approve(readContracts.StakeETV.address, ethers.constants.MaxUint256)); // Give Infinite approval
+                  await tx(writeContracts.MyToken.approve(readContracts.Stake.address, ethers.constants.MaxUint256)); // Give Infinite approval
                   setLoader(false);
                 }}
               >
@@ -628,7 +628,7 @@ function App(props) {
               }}
               to="/"
             >
-              StakeETV UI
+              Stake UI
             </Link>
           </Menu.Item>
           {/* <Menu.Item key="/contracts">
@@ -648,8 +648,20 @@ function App(props) {
             {completeDisplay}
 
             <div style={{ padding: 8, marginTop: 32 }}>
-              <div>StakeETV Contract:</div>
-              <Address value={readContracts && readContracts.StakeETV && readContracts.StakeETV.address} />
+              <div>Stake Contract:</div>
+              <Address value={readContracts && readContracts.Stake && readContracts.Stake.address} />
+            </div>
+
+            <div style={{ padding: 8 }}>
+              <Button
+                type={"default"}
+                onClick={() => {
+                  tx(writeContracts.ClaimMTK.claimFreeTokens());
+                }}
+                disabled={userMTKBalance > 0}
+              >
+                📡 Claim Free MTK!
+              </Button>
             </div>
 
             <div style={{ padding: 8, marginTop: 32 }}>
@@ -658,13 +670,13 @@ function App(props) {
             </div>
 
             <div style={{ padding: 8 }}>
-              <div>ETV Balance | rETV Balance:</div>
-              <Balance balance={uETVBalance} fontSize={64} />/<Balance balance={rETVBalance} fontSize={64} />
+              <div>MTK Balance | rMTK Balance:</div>
+              <Balance balance={uMTKBalance} fontSize={64} />/<Balance balance={rMTKBalance} fontSize={64} />
             </div>
 
             <div style={{ padding: 8 }}>
               <div>Total staked:</div>
-              <Balance balance={totalETVStaked} fontSize={64} />/<Balance balance={threshold} fontSize={64} />
+              <Balance balance={totalMTKStaked} fontSize={64} />/<Balance balance={threshold} fontSize={64} />
             </div>
 
             <div style={{ padding: 8 }}>
@@ -683,7 +695,7 @@ function App(props) {
               <Button
                 type={"default"}
                 onClick={() => {
-                  tx(writeContracts.StakeETV.claimRewards());
+                  tx(writeContracts.Stake.claimRewards());
                 }}
                 disabled={reward == 0}
               >
@@ -718,7 +730,7 @@ function App(props) {
                 type={"default"}
                 onClick={async () => {
                   setLoader(true);
-                  await tx(writeContracts.StakeETV.unstake(ethers.utils.parseEther("" + tokenUnStakeAmount)));
+                  await tx(writeContracts.Stake.unstake(ethers.utils.parseEther("" + tokenUnStakeAmount)));
                   setLoader(false);
                   setTokenUnStakeAmount("");
                 }}
@@ -732,7 +744,7 @@ function App(props) {
               <Button
                 type={"default"}
                 onClick={() => {
-                  tx(writeContracts.StakeETV.withdraw());
+                  tx(writeContracts.Stake.withdraw());
                 }}
                 disabled={!unstakeAmount || unstakeAmount == 0}
               >
@@ -789,7 +801,7 @@ function App(props) {
           </Route>
           <Route path="/contracts">
             <Contract
-              name="EarnTV"
+              name="MyToken"
               signer={userSigner}
               provider={localProvider}
               address={address}
@@ -797,7 +809,7 @@ function App(props) {
               contractConfig={contractConfig}
             />
             <Contract
-              name="StakeETV"
+              name="Stake"
               signer={userSigner}
               provider={localProvider}
               address={address}

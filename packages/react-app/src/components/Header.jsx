@@ -6,15 +6,11 @@ import React from "react";
 export default function Header() {
   return (
     <a
-      href="https://sepolia.etherscan.io/address/0x6c2856BA45057f3E28901658D31aCf127b3f38a0#code"
+      href="https://sepolia.etherscan.io/address/0x69a7DED635ad8aDc70477B465FE08080a632dd2b#code"
       target="_blank"
       rel="noopener noreferrer"
     >
-      <PageHeader
-        title="Stake ETV"
-        subTitle="Stake ETV to earn rETV (ETV Reward tokens)"
-        style={{ cursor: "pointer" }}
-      />
+      <PageHeader title="Stake MTK" subTitle="Stake MTK to earn rMTK (MyToken Rewards)" style={{ cursor: "pointer" }} />
     </a>
   );
 }

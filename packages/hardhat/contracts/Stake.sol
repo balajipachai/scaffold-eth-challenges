@@ -6,25 +6,25 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 
-/// @title StakeETV
-/// @notice The stake ETV contract for staking and unstaking ETV
-contract StakeETV is Ownable {
+/// @title Stake
+/// @notice The stake MTK contract for staking and unstaking MTK
+/// @author iamdoraemon.eth | iambatman.blockchain
+contract Stake is Ownable {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     // Reward token contract address
     // solhint-disable-next-line var-name-mixedcase
     IERC20 public rewardToken;
-    IERC20 public ETVContract =
-        IERC20(0xbB56cFDD9d9ffd449f53a96457CbDCBDb003836E); // TODO CHANGE TOKEN ADDRESS WHILE DEPLOYMENT
+    IERC20 public MyToken;
 
     // List of Stakers, helpful when fetching stakers report
     address[] public stakers;
 
     // APY
-    uint8 public APY = 15;
+    uint8 public APY = 35;
 
-    // Staking pool threshold = 1 Million ETV
+    // Staking pool threshold = 1 Million MTK
     uint256 public threshold = 1000000 ether;
 
     // Staking would be accepted for 3 Months
@@ -55,7 +55,7 @@ contract StakeETV is Ownable {
         uint256 amount;
     }
 
-    uint256 public totalETVStaked;
+    uint256 public totalMTKStaked;
     mapping(address => Staker) public stakerInfo;
 
     event Stake(
@@ -87,17 +87,17 @@ contract StakeETV is Ownable {
      (an interface for ERC20 tokens) and assigns it to a state variable `rewardToken`.
      The `require` statement checks that the input parameter is not the null address. 
     */
-    constructor(IERC20 _rewardToken, IERC20 _etvContract) {
+    constructor(IERC20 _rewardToken, IERC20 _myToken) {
         require(
             address(_rewardToken) != address(0),
             "Reward token is address zero"
         );
         require(
-            address(_etvContract) != address(0),
-            "ETV token is address zero"
+            address(_myToken) != address(0),
+            "MTK token is address zero"
         );
         rewardToken = _rewardToken;
-        ETVContract = _etvContract;
+        MyToken = _myToken;
     }
 
     /**
@@ -200,7 +200,7 @@ contract StakeETV is Ownable {
      *
      * Requirements:
      * - amount must be greater than 0
-     * - EarnTV balance of Staker must be greater than or equal to amount
+     * - CBALA balance of Staker must be greater than or equal to amount
      */
     function claimRewards() external {
         Staker memory _staker = stakerInfo[msg.sender];
@@ -237,18 +237,18 @@ contract StakeETV is Ownable {
     }
 
     /**
-     * @dev To stake EarnTV in the contract
+     * @dev To stake CBALA in the contract
      *
      * Requirements:
      * - amount must be greater than 0
-     * - EarnTV balance of Staker must be greater than or equal to amount
+     * - CBALA balance of Staker must be greater than or equal to amount
      */
     function stake(uint256 amount) external {
         require(amount > 0, "Stake amount must be > 0");
 
-        // Check Staker has enough ETV balance
+        // Check Staker has enough MTK balance
         require(
-            (ETVContract.balanceOf(msg.sender)) >= amount,
+            (MyToken.balanceOf(msg.sender)) >= amount,
             "stake: Insufficient user balance"
         );
 
@@ -280,9 +280,9 @@ contract StakeETV is Ownable {
             _staker.stakedAtTimestamp = block.timestamp;
         }
 
-        ETVContract.safeTransferFrom(msg.sender, address(this), amount);
+        MyToken.safeTransferFrom(msg.sender, address(this), amount);
 
-        totalETVStaked = totalETVStaked.add(amount);
+        totalMTKStaked = totalMTKStaked.add(amount);
 
         // Updates Total Stake amount
         _staker.amount = _staker.amount.add(amount);
@@ -292,12 +292,12 @@ contract StakeETV is Ownable {
     }
 
     /**
-     * @dev To Unstake EarnTV from the contract
+     * @dev To Unstake CBALA from the contract
      *
      * Requirements:
-     * - Caller's staked EarnTV must be greater than 0
-     * - Unstake amount must be less than or equal to the staked EarnTV
-     * - Contract's EarnTV balance must be greater than staked EarnTV
+     * - Caller's staked CBALA must be greater than 0
+     * - Unstake amount must be less than or equal to the staked CBALA
+     * - Contract's CBALA balance must be greater than staked CBALA
      */
     function unstake(uint256 amount) external {
         require(amount > 0, "Unstake amount must be > 0");
@@ -322,7 +322,7 @@ contract StakeETV is Ownable {
         _staker.unstakeAmount = _staker.unstakeAmount.add(amount);
         _staker.amount = _staker.amount.sub(amount);
 
-        totalETVStaked = totalETVStaked.sub(amount);
+        totalMTKStaked = totalMTKStaked.sub(amount);
 
         stakerInfo[msg.sender] = _staker; // Write Staker info to contract storage
 
@@ -334,7 +334,7 @@ contract StakeETV is Ownable {
      *
      * Requirements:
      * - amount must be greater than 0
-     * - EarnTV balance of Staker must be greater than or equal to amount
+     * - CBALA balance of Staker must be greater than or equal to amount
      */
     function withdraw() external {
         Staker memory _staker = stakerInfo[msg.sender];
@@ -352,14 +352,14 @@ contract StakeETV is Ownable {
         );
 
         require(
-            ETVContract.balanceOf(address(this)) >= unstakeAmount,
+            MyToken.balanceOf(address(this)) >= unstakeAmount,
             "withdraw: Insufficient contract balance"
         );
 
         _staker.unstakeAmount = 0;
         stakerInfo[msg.sender] = _staker; // Write Staker info to contract storage
 
-        ETVContract.safeTransfer(msg.sender, unstakeAmount); // External Call
+        MyToken.safeTransfer(msg.sender, unstakeAmount); // External Call
 
         emit Withdraw(msg.sender, unstakeAmount, block.timestamp); //solhint-disable-line not-rely-on-time
     }
@@ -436,7 +436,7 @@ contract StakeETV is Ownable {
     /**
      *
      * @param _staker Staker struct
-     * @dev Returns the rewards for the staked ETV
+     * @dev Returns the rewards for the staked MTK
      *
      */
     function getRewards(

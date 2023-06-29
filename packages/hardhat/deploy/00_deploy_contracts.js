@@ -8,9 +8,9 @@ function sleep(ms) {
 
 module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   const { deploy } = deployments;
-  const { deployer, contractOwner, admin, issuer } = await getNamedAccounts();
+  const { deployer, admin, issuer } = await getNamedAccounts();
 
-  const fixedSupply = "0x19d971e4fe8402000000000"; // 500 Million ETV Tokens
+  const fixedSupply = "0x33b2e3c9fd0804000000000"; // 1 Billion MTK
   const transferThreshold = "0x43c33c1937564800000"; // 20K ETV for IssueETV Contract
 
   console.log(
@@ -34,35 +34,91 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
       ]
    */
 
-  /* const earnTVContract = await deploy("EarnTV", {
+  const myTokenContract = await deploy("MyToken", {
     from: deployer,
-    args: [fixedSupply, contractOwner, [admin]],
     log: true,
   });
 
-  console.log(`EarnTV contract is deployed at ${earnTVContract.address}`);
-  */
+  const claimMTKContract = await deploy("ClaimMTK", {
+    from: deployer,
+    args: [myTokenContract.address],
+    log: true,
+  });
 
-  const earnTVContract = await ethers.getContractAt(
-    "EarnTV",
-    "0x7614454ed4b76921DfB4a3918963b4E9460574Bb"
+  console.log(`MyToken contract is deployed at ${myTokenContract.address}`);
+
+  console.log(
+    `Deployer ${deployer} gives infinite approval to ClaimMTK contract`
   );
-  console.log(`EarnTV contract is deployed at ${earnTVContract.address}`);
+  const myTokenConInstance = await ethers.getContractAt(
+    "MyToken",
+    myTokenContract.address,
+    deployer
+  );
+
+  const approveTransaction = await myTokenConInstance.approve(
+    claimMTKContract.address,
+    ethers.constants.MaxUint256
+  );
+  const approveResult = await approveTransaction.wait();
+  console.log(
+    `Approve transaction executed successfully in block: ${approveResult.blockNumber}`
+  );
+  console.log(
+    `Allowance from deployer to ClaimMTK: ${await myTokenConInstance.allowance(
+      deployer,
+      claimMTKContract.address
+    )}`
+  );
+
+  // Transfer 500 Million MTK to MyToken contract
+  // console.log("\n 🏵  Sending 500 Million MTK to MyToken contract...\n");
+
+  // let transferTransaction;
+  // = await myTokenConInstance.transfer(
+  //   myTokenContract.address,
+  //   ethers.utils.parseEther("500000000")
+  // );
+
+  // let transferResult;
+  //  = await transferTransaction.wait();
+  // console.log(
+  //   `Transfer transaction executed successfully in block: ${transferResult.blockNumber}`
+  // );
+
+  // console.log(
+  //   `Balance of MyToken contract: ${await myTokenConInstance.balanceOf(
+  //     myTokenContract.address
+  //   )}`
+  // );
+
+  // const myTokenContract = await ethers.getContractAt(
+  //   "MyToken",
+  //   "0x7614454ed4b76921DfB4a3918963b4E9460574Bb"
+  // );
+  // console.log(`MyToken contract is deployed at ${myTokenContract.address}`);
 
   await sleep(5000); // wait 5 seconds for transaction to propagate
 
-  const rewardContract = await ethers.getContractAt(
-    "Reward",
-    "0x6c2856BA45057f3E28901658D31aCf127b3f38a0"
-  );
+  const rewardContract = await deploy("Reward", {
+    from: deployer,
+    log: true,
+  });
 
   console.log(`Reward contract is deployed at ${rewardContract.address}`);
 
+  // const rewardContract = await ethers.getContractAt(
+  //   "Reward",
+  //   "0x6c2856BA45057f3E28901658D31aCf127b3f38a0"
+  // );
+
+  // console.log(`Reward contract is deployed at ${rewardContract.address}`);
+
   await sleep(5000); // wait 5 seconds for transaction to propagate
 
-  const stakeContract = await deploy("StakeETV", {
+  const stakeContract = await deploy("Stake", {
     from: deployer,
-    args: [rewardContract.address, earnTVContract.address],
+    args: [rewardContract.address, myTokenContract.address],
     log: true,
   });
 
@@ -75,16 +131,16 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
    */
   const rewardConInstance = await ethers.getContractAt(
     "Reward",
-    "0x6c2856BA45057f3E28901658D31aCf127b3f38a0",
+    rewardContract.address,
     deployer
   );
 
-  // Transfer 1 Million RewardToken to StakeETV contract
-  console.log("\n 🏵  Sending 5 Million rETV to StakeETV contract...\n");
+  // Transfer 1 Million RewardToken to Stake contract
+  console.log("\n 🏵  Sending 50 Million rMTK to Stake contract...\n");
 
   const transferTransaction = await rewardConInstance.transfer(
     stakeContract.address,
-    ethers.utils.parseEther("5000000")
+    ethers.utils.parseEther("50000000")
   );
 
   const transferResult = await transferTransaction.wait();
@@ -95,7 +151,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
   console.log("\n    ✅ confirming...\n");
   await sleep(5000); // wait 5 seconds for transaction to propagate
 
-  console.log("\n    ✅ printing StakeETV rETV token balance...\n");
+  console.log("\n    ✅ printing Stake rMTK token balance...\n");
   const balance = await rewardConInstance.balanceOf(stakeContract.address);
   // eslint-disable-next-line no-underscore-dangle
   const decimalValue = ethers.BigNumber.from(balance._hex).toString();
@@ -107,7 +163,7 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
 
   /*
   // Transfer 1 Million ETV to the front-end address
-  const stakeConInstance = await ethers.getContract("StakeETV", contractOwner);
+  const stakeConInstance = await ethers.getContract("Stake", contractOwner);
 
   // Transfer 1 Million ETV to front-end contract
   console.log("\n 🏵  Sending 1 Million ETV to front-end address...\n");
@@ -154,8 +210,8 @@ module.exports = async ({ getNamedAccounts, deployments, getChainId }) => {
       await sleep(5000); // wait 5 seconds for deployment to propagate
       await run("verify:verify", {
         address: stakeContract.address,
-        contract: "contracts/StakeETV.sol:StakeETV",
-        constructorArguments: [rewardContract.address, earnTVContract.address],
+        contract: "contracts/Stake.sol:Stake",
+        constructorArguments: [rewardContract.address, myTokenContract.address],
       });
       // await sleep(5000); // wait 5 seconds for deployment to propagate
       // await run("verify:verify", {
