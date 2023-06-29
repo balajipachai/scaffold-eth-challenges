@@ -53,7 +53,7 @@ export default function Transactions({
         }
       }
       setTransactions(newTransactions);
-      console.log("Loaded",newTransactions.length)
+      console.log("Loaded", newTransactions.length);
     };
     if (readContracts) getTransactions();
   }, 3777);
@@ -93,7 +93,7 @@ export default function Transactions({
     return <Spin />;
   }
 
-  console.log("transactions",transactions)
+  console.log("transactions", transactions);
 
   return (
     <div style={{ maxWidth: 750, margin: "auto", marginTop: 32, marginBottom: 32 }}>
@@ -111,7 +111,14 @@ export default function Transactions({
           const hasEnoughSignatures = item.signatures.length <= signaturesRequired.toNumber();
 
           return (
-            <TransactionListItem item={item} mainnetProvider={mainnetProvider} blockExplorer={blockExplorer} price={price} readContracts={readContracts} contractName={contractName}>
+            <TransactionListItem
+              item={item}
+              mainnetProvider={mainnetProvider}
+              blockExplorer={blockExplorer}
+              price={price}
+              readContracts={readContracts}
+              contractName={contractName}
+            >
               <span>
                 {item.signatures.length}/{signaturesRequired.toNumber()} {hasSigned ? "✅" : ""}
               </span>
@@ -155,9 +162,7 @@ export default function Transactions({
                 Sign
               </Button>
               <Button
-
                 key={item.hash}
-                
                 onClick={async () => {
                   const newHash = await readContracts[contractName].getTransactionHash(
                     item.nonce,
@@ -184,7 +189,7 @@ export default function Transactions({
               >
                 Exec
               </Button>
-          </TransactionListItem>
+            </TransactionListItem>
           );
         }}
       />

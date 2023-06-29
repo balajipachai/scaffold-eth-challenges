@@ -7,6 +7,8 @@ import { Row, Col, Button, Menu, Alert, Switch as SwitchD } from "antd";
 import Web3Modal from "web3modal";
 import WalletConnectProvider from "@walletconnect/web3-provider";
 import { useUserAddress } from "eth-hooks";
+import { formatEther, parseEther } from "@ethersproject/units";
+import { useThemeSwitcher } from "react-css-theme-switcher";
 import { Balance, Header, Account, Faucet, Ramp, Contract, GasGauge, Address, ThemeSwitch } from "./components";
 import {
   useExchangePrice,
@@ -20,10 +22,8 @@ import {
   useOnBlock,
 } from "./hooks";
 import { Transactor } from "./helpers";
-import { formatEther, parseEther } from "@ethersproject/units";
-//import Hints from "./Hints";
+// import Hints from "./Hints";
 import { Hints, ExampleUI, Subgraph } from "./views";
-import { useThemeSwitcher } from "react-css-theme-switcher";
 import { INFURA_ID, DAI_ADDRESS, DAI_ABI, NETWORK, NETWORKS } from "./constants";
 import { CreateTransaction, Transactions, Owners, FrontPage } from "./views";
 
@@ -47,7 +47,7 @@ import { CreateTransaction, Transactions, Owners, FrontPage } from "./views";
 */
 
 /// 📡 What chain are your contracts deployed to?
-const targetNetwork = NETWORKS["localhost"]; // <------- select your target frontend network (localhost, rinkeby, xdai, mainnet)
+const targetNetwork = NETWORKS.localhost; // <------- select your target frontend network (localhost, rinkeby, xdai, mainnet)
 
 // const poolServerUrl = "https://backend.multisig.holdings:49832/";
 const poolServerUrl = "http://localhost:49832/";
@@ -90,8 +90,8 @@ function App(props) {
   const address = useUserAddress(userProvider);
 
   // You can warn the user if you would like them to be on a specific network
-  let localChainId = localProvider && localProvider._network && localProvider._network.chainId;
-  let selectedChainId = userProvider && userProvider._network && userProvider._network.chainId;
+  const localChainId = localProvider && localProvider._network && localProvider._network.chainId;
+  const selectedChainId = userProvider && userProvider._network && userProvider._network.chainId;
 
   // For more hooks, check out 🔗eth-hooks at: https://www.npmjs.com/package/eth-hooks
 
@@ -115,7 +115,7 @@ function App(props) {
 
   const contractName = "MetaMultiSigWallet";
 
-  //📟 Listen for broadcast events
+  // 📟 Listen for broadcast events
   const executeTransactionEvents = useEventListener(
     readContracts,
     contractName,
@@ -133,7 +133,7 @@ function App(props) {
   const nonce = useContractReader(readContracts, contractName, "nonce");
   if (DEBUG) console.log("# nonce:", nonce);
 
-  //📟 Listen for broadcast events
+  // 📟 Listen for broadcast events
   const ownerEvents = useEventListener(readContracts, contractName, "Owner", localProvider, 1);
   if (DEBUG) console.log("📟 ownerEvents:", ownerEvents);
 
@@ -153,7 +153,7 @@ function App(props) {
   // keep track of a variable from the contract in the local React state:
   const purpose = useContractReader(readContracts, "YourContract", "purpose");
 
-  //📟 Listen for broadcast events
+  // 📟 Listen for broadcast events
   const setPurposeEvents = useEventListener(readContracts, "YourContract", "SetPurpose", localProvider, 1);
 
   /*
@@ -203,7 +203,7 @@ function App(props) {
     networkDisplay = (
       <div style={{ zIndex: 2, position: "absolute", right: 0, top: 60, padding: 16 }}>
         <Alert
-          message={"⚠️ Wrong Network"}
+          message="⚠️ Wrong Network"
           description={
             <div>
               You have <b>{NETWORK(selectedChainId).name}</b> selected and you need to be on{" "}
@@ -226,7 +226,7 @@ function App(props) {
   const signaturesRequired = useContractReader(readContracts, contractName, "signaturesRequired");
   if (DEBUG) console.log("✳️ signaturesRequired:", signaturesRequired);
 
-  //event OpenStream( address indexed to, uint256 amount, uint256 frequency );
+  // event OpenStream( address indexed to, uint256 amount, uint256 frequency );
   const openStreamEvents = useEventListener(readContracts, contractName, "OpenStream", localProvider, 1);
   if (DEBUG) console.log("📟 openStreamEvents:", openStreamEvents);
 
@@ -259,7 +259,7 @@ function App(props) {
     faucetHint = (
       <div style={{ padding: 16 }}>
         <Button
-          type={"primary"}
+          type="primary"
           onClick={() => {
             faucetTx({
               to: address,
@@ -398,7 +398,7 @@ function App(props) {
             signer={userProvider.getSigner()}
             provider={mainnetProvider}
             address={address}
-            blockExplorer={"https://etherscan.io/"}
+            blockExplorer="https://etherscan.io/"
           />
         </Route>
         <Route path="/subgraph">

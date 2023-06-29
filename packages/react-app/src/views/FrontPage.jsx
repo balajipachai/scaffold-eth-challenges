@@ -49,6 +49,7 @@ export default function FrontPage({
           />
         </div>
       </div>
+      ExecuteTransactionEvents
       <List
         bordered
         dataSource={executeTransactionEvents}
